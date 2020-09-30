@@ -43,14 +43,11 @@ public class Company extends Persistable {
   @Column(columnDefinition = "BINARY(16)")
   private UUID id;
 
-  @Column(nullable = false, unique = true)
+  @Column(nullable = false, unique = true, length = 300)
   private String name;
 
   @OneToMany(mappedBy = "company")
   private Set<Profile> profiles;
-
-  @OneToMany(mappedBy = "company")
-  private Set<Team> teams;
 
   @OneToMany(mappedBy = "company")
   private Set<Person> person;

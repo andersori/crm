@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface Service<DTO, Form, Filter> {
+public interface Service<DTO, Form, Filter, EntityJPA> {
   Mono<Long> amount(Filter filter);
 
   Flux<DTO> filter(Filter filter, Pageable pageable);
@@ -14,6 +14,8 @@ public interface Service<DTO, Form, Filter> {
   Flux<DTO> save(Set<Form> forms);
 
   Mono<DTO> get(UUID id);
+
+  Mono<EntityJPA> find(UUID id);
 
   Mono<DTO> create(Form form);
 

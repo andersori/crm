@@ -1,18 +1,21 @@
 package br.com.f5promotora.crm.config.database.r2dbc;
 
+import java.nio.ByteBuffer;
 import java.util.UUID;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.convert.WritingConverter;
 
-@ReadingConverter
-public class UUIDToByteArrayConverter implements Converter<byte[], UUID> {
+@WritingConverter
+public class UUIDToByteArrayConverter implements Converter<UUID, byte[]> {
+
+  public static final UUIDToByteArrayConverter INSTANCE = new UUIDToByteArrayConverter();
 
   @Override
-  public UUID convert(byte[] source) {
-    //		ByteBuffer bb = ByteBuffer.wrap(source);
-    //		long firstLong = bb.getLong();
-    //		long secondLong = bb.getLong();
-    //		return new UUID(firstLong, secondLong);
-    return UUID.nameUUIDFromBytes(source);
+  public byte[] convert(UUID source) {
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+    bb.putLong(source.getMostSignificantBits());
+    bb.putLong(source.getLeastSignificantBits());
+
+    return bb.array();
   }
 }

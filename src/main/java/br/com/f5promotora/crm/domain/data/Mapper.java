@@ -7,4 +7,6 @@ public interface Mapper<EntityJPA, EntityR2DBC, DTO, Form> {
   DTO toDtoJpa(EntityJPA entity);
 
   DTO toDtoR2dbc(EntityR2DBC entity);
+
+  EntityJPA copy(EntityR2DBC entity);
 }

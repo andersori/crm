@@ -1,6 +1,7 @@
 package br.com.f5promotora.crm.domain.data.entity.jpa.account;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.Persistable;
+import br.com.f5promotora.crm.domain.data.entity.jpa.accompaniment.Campaign;
 import java.util.Set;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -47,12 +48,8 @@ public class Team extends Persistable {
   private String name;
 
   @ManyToOne(optional = false)
-  @JoinColumn(name = "company_id", nullable = false)
-  private Company company;
-
-  @ManyToOne(optional = false)
   @JoinColumn(name = "profile_id", nullable = false)
-  private Profile manager;
+  private Profile owner;
 
   @Column(length = 1000)
   private String description;
@@ -63,4 +60,11 @@ public class Team extends Persistable {
       joinColumns = @JoinColumn(name = "team_id"),
       inverseJoinColumns = @JoinColumn(name = "profile_id"))
   private Set<Profile> participants;
+
+  @ManyToMany
+  @JoinTable(
+      name = "team_campaign",
+      joinColumns = @JoinColumn(name = "team_id"),
+      inverseJoinColumns = @JoinColumn(name = "campaign_id"))
+  private Set<Campaign> campaigns;
 }

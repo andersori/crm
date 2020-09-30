@@ -1,5 +1,7 @@
 package br.com.f5promotora.crm.domain.service.v1;
 
+import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile;
+import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
@@ -21,10 +23,12 @@ import org.springframework.data.r2dbc.core.DatabaseClient;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Query;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Getter
 @RequiredArgsConstructor
@@ -38,6 +42,8 @@ public class ProfileServiceImpl implements ProfileService {
 
   private final DatabaseClient dbClient;
   private final R2dbcEntityTemplate r2dbcTemplate;
+
+  private final PasswordEncoder passwordEncoder;
 
   private final ProfileMapper mapper;
 
@@ -57,12 +63,22 @@ public class ProfileServiceImpl implements ProfileService {
         .page(pageable)
         .fetch()
         .all()
-        .map(mapper::toDtoR2dbc);
+        .flatMap(
+            profile ->
+                Mono.just(mapper.toDtoR2dbc(profile))
+                    .flatMap(
+                        profileDto ->
+                            companyService
+                                .get(profile.getCompanyId())
+                                .doOnNext(profileDto::setCompany)
+                                .thenReturn(profileDto)));
   }
 
   @Override
   public Flux<ProfileDTO> save(Set<ProfileForm> forms) {
     return Flux.fromIterable(forms)
+        .parallel()
+        .runOn(Schedulers.newParallel("save", 10))
         .flatMap(
             form ->
                 filter(
@@ -75,7 +91,8 @@ public class ProfileServiceImpl implements ProfileService {
                             return create(form);
                           }
                           return update(profiles.get(0).getId(), form);
-                        }));
+                        }))
+        .sequential();
   }
 
   @Override
@@ -115,6 +132,25 @@ public class ProfileServiceImpl implements ProfileService {
                         })
                     .then(Mono.just(mapper.toEntity(form)))
                     .doOnNext(profile -> profile.setCompany(company))
+                    .doOnNext(profile -> profile.setStatus(ProfileStatus.INVITED))
+                    .doOnNext(
+                        profile ->
+                            profile.setPassword(passwordEncoder.encode(profile.getPassword())))
+                    .flatMap(
+                        profile ->
+                            filter(
+                                    ProfileFilter.builder().setCompanyId(company.getId()).build(),
+                                    PageRequest.of(0, 1))
+                                .hasElements()
+                                .doOnNext(
+                                    hasElements -> {
+                                      if (!hasElements) {
+                                        // profile.setPermission(ProfileRole.ADMIN);
+                                      } else {
+                                        // profile.setPermission(ProfileRole.REGULAR);
+                                      }
+                                    })
+                                .thenReturn(profile))
                     .map(repo::save)
                     .map(mapper::toDtoJpa));
   }
@@ -193,7 +229,7 @@ public class ProfileServiceImpl implements ProfileService {
 
   @Override
   public Mono<Void> delete(UUID id) {
-    return null;
+    return find(id).then(reactiveRepo.deleteById(id));
   }
 
   @Override
@@ -208,5 +244,22 @@ public class ProfileServiceImpl implements ProfileService {
     return r2dbcTemplate.exists(
         Query.query(ProfileCriteria.execute(ProfileFilter.builder().setUsername(username).build())),
         br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Profile.class);
+  }
+
+  @Override
+  public Mono<Profile> find(UUID id) {
+    return dbClient
+        .select()
+        .from(br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Profile.class)
+        .matching(
+            ProfileCriteria.execute(
+                ProfileFilter.builder().setId(Collections.singleton(id)).build()))
+        .fetch()
+        .one()
+        .map(mapper::copy)
+        .switchIfEmpty(
+            Mono.error(
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Profile with id '" + id + "' not found")));
   }
 }

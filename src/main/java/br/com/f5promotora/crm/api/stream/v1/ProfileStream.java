@@ -1,44 +1,39 @@
-package br.com.f5promotora.crm.api.controller.v1;
+package br.com.f5promotora.crm.api.stream.v1;
 
 import br.com.f5promotora.crm.api.Commons;
-import br.com.f5promotora.crm.api.controller.Controller;
+import br.com.f5promotora.crm.api.stream.Stream;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
 import br.com.f5promotora.crm.domain.service.ProfileService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.Set;
-import java.util.UUID;
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
-@RequestMapping("/v1/profile")
-@RestController("profileControllerV1")
-public class ProfileController implements Controller<ProfileDTO, ProfileFilter, ProfileForm> {
+@RequestMapping("/stream/v1/profile")
+@RestController("profileStreamControllerV1")
+public class ProfileStream implements Stream<ProfileDTO, ProfileFilter, ProfileForm> {
 
   private final ProfileService service;
 
-  public ProfileController(@Qualifier("profileServiceImplV1") ProfileService service) {
+  public ProfileStream(@Qualifier("profileServiceImplV1") ProfileService service) {
     this.service = service;
   }
 
   @Override
-  @GetMapping
+  @GetMapping(produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
   public Flux<ProfileDTO> filter(
       @RequestParam(required = false) ProfileFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
@@ -55,39 +50,10 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   }
 
   @Override
-  @PostMapping
-  public Mono<ProfileDTO> create(@Valid @RequestBody ProfileForm form) {
-    return service.create(form);
-  }
-
-  @Override
-  @PutMapping("/{id}")
-  @Operation(
-      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<ProfileDTO> update(@PathVariable UUID id, @Valid @RequestBody ProfileForm form) {
-    return service.update(id, form);
-  }
-
-  @Override
-  @PostMapping("/import")
-  @Operation(
-      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
+  @PostMapping(
+      value = "/import",
+      produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
   public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileForm> forms) {
     return service.save(forms);
-  }
-
-  @Override
-  @GetMapping("/{id}")
-  @Operation(
-      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<ProfileDTO> get(@PathVariable UUID id) {
-    return service.get(id);
-  }
-
-  @Override
-  @Operation(
-      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<Void> delete(@PathVariable UUID id) {
-    return service.delete(id);
   }
 }

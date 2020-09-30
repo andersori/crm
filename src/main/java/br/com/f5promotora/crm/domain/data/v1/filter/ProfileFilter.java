@@ -1,7 +1,6 @@
 package br.com.f5promotora.crm.domain.data.v1.filter;
 
-import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
-import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
+import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -23,10 +22,14 @@ public class ProfileFilter {
   private Set<UUID> id;
   private String email;
   private String username;
-  private Company company;
-  private String firstName;
-  private String secondName;
-  private ProfileStatus status;
+  private UUID companyId;
+  private String firstNameEquals;
+  private String firstNameLike;
+  private String secondNameEquals;
+  private String secondNameLike;
+  private Set<ProfileStatus> status;
   private LocalDateTime lastLogin;
-  private ProfilePermission permission;
+  private LocalDateTime lastLoginBefore;
+  private LocalDateTime lastLoginAfter;
+  private Set<ProfileRole> permission;
 }

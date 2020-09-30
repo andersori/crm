@@ -2,10 +2,11 @@ package br.com.f5promotora.crm.api.controller.v1;
 
 import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
-import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
-import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
-import br.com.f5promotora.crm.domain.service.ProfileService;
+import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
+import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
+import br.com.f5promotora.crm.domain.data.v1.form.TeamForm;
+import br.com.f5promotora.crm.domain.service.TeamService;
+import br.com.f5promotora.crm.domain.service.v1.TeamServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.Set;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,20 +29,22 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@RequestMapping("/v1/profile")
-@RestController("profileControllerV1")
-public class ProfileController implements Controller<ProfileDTO, ProfileFilter, ProfileForm> {
+@RequestMapping("/v1/team")
+@RestController("teamControllerV1")
+public class TeamController implements Controller<TeamDTO, TeamFilter, TeamForm> {
 
-  private final ProfileService service;
+  private final TeamService service;
 
-  public ProfileController(@Qualifier("profileServiceImplV1") ProfileService service) {
+  public TeamController(@Qualifier("teamServiceImplV1") TeamServiceImpl service) {
     this.service = service;
   }
 
   @Override
   @GetMapping
-  public Flux<ProfileDTO> filter(
-      @RequestParam(required = false) ProfileFilter filter,
+  @Operation(
+      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
+  public Flux<TeamDTO> filter(
+      @RequestParam(required = false) TeamFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
@@ -56,7 +60,9 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
 
   @Override
   @PostMapping
-  public Mono<ProfileDTO> create(@Valid @RequestBody ProfileForm form) {
+  @Operation(
+      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
+  public Mono<TeamDTO> create(@Valid @RequestBody TeamForm form) {
     return service.create(form);
   }
 
@@ -64,7 +70,7 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   @PutMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<ProfileDTO> update(@PathVariable UUID id, @Valid @RequestBody ProfileForm form) {
+  public Mono<TeamDTO> update(@PathVariable UUID id, @Valid @RequestBody TeamForm form) {
     return service.update(id, form);
   }
 
@@ -72,7 +78,7 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   @PostMapping("/import")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileForm> forms) {
+  public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamForm> forms) {
     return service.save(forms);
   }
 
@@ -80,11 +86,12 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   @GetMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<ProfileDTO> get(@PathVariable UUID id) {
+  public Mono<TeamDTO> get(@PathVariable UUID id) {
     return service.get(id);
   }
 
   @Override
+  @DeleteMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
   public Mono<Void> delete(@PathVariable UUID id) {

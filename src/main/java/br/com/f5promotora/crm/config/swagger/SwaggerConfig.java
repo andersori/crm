@@ -1,37 +1,67 @@
 package br.com.f5promotora.crm.config.swagger;
 
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityScheme.In;
+import org.springdoc.core.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.builders.PathSelectors;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.service.ApiInfo;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2WebFlux;
 
 @Configuration
-@EnableSwagger2WebFlux
 public class SwaggerConfig {
 
   @Bean
-  public Docket swaggerConfigurationsCustom() {
-    return new Docket(DocumentationType.SWAGGER_2)
-        .select()
-        .apis(RequestHandlerSelectors.basePackage("br.com.f5promotora.crm.api.controller"))
-        .paths(PathSelectors.any())
-        .build()
-        .apiInfo(apiInfo());
+  OpenAPI customOpenAPI() {
+    return new OpenAPI()
+        .components(
+            new Components()
+                .addSecuritySchemes(
+                    "basic",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("basic")
+                        .in(In.HEADER)
+                        .name("Authorization"))
+                .addSecuritySchemes(
+                    "bearer-jwt",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .in(In.HEADER)
+                        .name("Authorization")
+                        .bearerFormat("JWT")))
+        .info(apiInfo());
   }
 
-  private ApiInfo apiInfo() {
-    return new ApiInfoBuilder()
-        .title("Central de Informação")
-        .description(
-            "Propostas; Clientes; Contatos; Dados bancarios; Comissões; Corbans; Endereços; Status.")
-        .license("Apache Licence Version 2.0")
-        .licenseUrl("https://www.apache.org/licenses/LICENSE-2.0")
-        .version("0.0.1")
+  private Info apiInfo() {
+    return new Info()
+        .title("CRM")
+        .version("1.0.0")
+        .license(new License().name("Apache 2.0").url("http://springdoc.org"));
+  }
+
+  @Bean
+  GroupedOpenApi streamAPI() {
+    String[] paths = {"/stream/**"};
+    String[] packagedToMatch = {"br.com.f5promotora.crm.api.stream"};
+    return GroupedOpenApi.builder()
+        .group("stream+json")
+        .pathsToMatch(paths)
+        .packagesToScan(packagedToMatch)
+        .build();
+  }
+
+  @Bean
+  GroupedOpenApi controllerAPI() {
+    String[] paths = {"/stream/**"};
+    String[] packagedToMatch = {"br.com.f5promotora.crm.api.controller"};
+    return GroupedOpenApi.builder()
+        .group("json")
+        .pathsToExclude(paths)
+        .packagesToScan(packagedToMatch)
         .build();
   }
 }

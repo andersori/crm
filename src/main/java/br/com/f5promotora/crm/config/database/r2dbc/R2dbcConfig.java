@@ -29,7 +29,7 @@ public class R2dbcConfig extends AbstractR2dbcConfiguration {
 
   @Override
   protected List<Object> getCustomConverters() {
-    return List.of(new UUIDToByteArrayConverter(), new ByteArrayToUUIDConverter());
+    return List.of(new ByteArrayToUUIDConverter(), new UUIDToByteArrayConverter());
   }
 
   @Bean
