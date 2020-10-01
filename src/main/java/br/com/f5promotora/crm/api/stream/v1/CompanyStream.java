@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.stream.Stream;
 import br.com.f5promotora.crm.domain.data.v1.dto.CompanyDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.CompanyForm;
+import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
 import br.com.f5promotora.crm.domain.service.CompanyService;
 import java.util.Set;
 import javax.validation.Valid;
@@ -24,7 +24,7 @@ import reactor.core.publisher.Flux;
 
 @RequestMapping("/stream/v1/company")
 @RestController("companyStreamControllerV1")
-public class CompanyStream implements Stream<CompanyDTO, CompanyFilter, CompanyForm> {
+public class CompanyStream implements Stream<CompanyDTO, CompanyFilter, CompanyFormCreate> {
 
   private final CompanyService service;
 
@@ -53,7 +53,7 @@ public class CompanyStream implements Stream<CompanyDTO, CompanyFilter, CompanyF
   @PostMapping(
       value = "/import",
       produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
-  public Flux<CompanyDTO> save(@Valid @RequestBody Set<CompanyForm> forms) {
+  public Flux<CompanyDTO> save(@Valid @RequestBody Set<CompanyFormCreate> forms) {
     return service.save(forms);
   }
 }

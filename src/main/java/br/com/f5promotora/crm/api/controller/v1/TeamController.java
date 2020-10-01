@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
 import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.TeamForm;
+import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
 import br.com.f5promotora.crm.domain.service.TeamService;
 import br.com.f5promotora.crm.domain.service.v1.TeamServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono;
 
 @RequestMapping("/v1/team")
 @RestController("teamControllerV1")
-public class TeamController implements Controller<TeamDTO, TeamFilter, TeamForm> {
+public class TeamController implements Controller<TeamDTO, TeamFilter, TeamFormCreate> {
 
   private final TeamService service;
 
@@ -43,8 +43,7 @@ public class TeamController implements Controller<TeamDTO, TeamFilter, TeamForm>
   @GetMapping
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<TeamDTO> filter(
-      @RequestParam(required = false) TeamFilter filter,
+  public Flux<TeamDTO> filter(TeamFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
@@ -62,7 +61,7 @@ public class TeamController implements Controller<TeamDTO, TeamFilter, TeamForm>
   @PostMapping
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<TeamDTO> create(@Valid @RequestBody TeamForm form) {
+  public Mono<TeamDTO> create(@Valid @RequestBody TeamFormCreate form) {
     return service.create(form);
   }
 
@@ -70,7 +69,7 @@ public class TeamController implements Controller<TeamDTO, TeamFilter, TeamForm>
   @PutMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<TeamDTO> update(@PathVariable UUID id, @Valid @RequestBody TeamForm form) {
+  public Mono<TeamDTO> update(@PathVariable UUID id, @Valid @RequestBody TeamFormCreate form) {
     return service.update(id, form);
   }
 
@@ -78,7 +77,7 @@ public class TeamController implements Controller<TeamDTO, TeamFilter, TeamForm>
   @PostMapping("/import")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamForm> forms) {
+  public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamFormCreate> forms) {
     return service.save(forms);
   }
 

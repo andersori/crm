@@ -3,7 +3,7 @@ package br.com.f5promotora.crm.domain.data.v1.mapper;
 import br.com.f5promotora.crm.domain.data.Mapper;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
-import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
+import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
 import org.mapstruct.Mapping;
 
 @org.mapstruct.Mapper(
@@ -14,7 +14,7 @@ public interface ProfileMapper
         br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile,
         br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Profile,
         ProfileDTO,
-        ProfileForm> {
+        ProfileFormCreate> {
 
   @Override
   @Mapping(target = "company.id", source = "companyId")

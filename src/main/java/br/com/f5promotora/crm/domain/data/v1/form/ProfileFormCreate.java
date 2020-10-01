@@ -1,7 +1,10 @@
 package br.com.f5promotora.crm.domain.data.v1.form;
 
-import java.util.UUID;
+import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
+import java.util.Set;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,11 +19,13 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(setterPrefix = "set")
-public class ProfileForm {
+public class ProfileFormCreate {
   @NotBlank private String email;
   @NotBlank private String username;
   @NotBlank private String password;
-  @NotNull private UUID companyId;
   @NotNull private String firstName;
+  private String companyName;
   private String secondName;
+  @NotEmpty private Set<ProfileRole> roles;
+  @NotEmpty private Set<ProfileAuthority> authorities;
 }

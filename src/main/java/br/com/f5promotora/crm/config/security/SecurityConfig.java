@@ -6,8 +6,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @EnableWebFluxSecurity
@@ -33,7 +33,7 @@ public class SecurityConfig {
         .permitAll()
         .pathMatchers(HttpMethod.POST, "/v1/profile", "/v1/company")
         .permitAll()
-        .pathMatchers(HttpMethod.GET, "/v1/company", "/v1/company")
+        .pathMatchers(HttpMethod.GET, "/v1/profile", "/v1/company")
         .permitAll()
         .anyExchange()
         .authenticated()
@@ -43,6 +43,6 @@ public class SecurityConfig {
 
   @Bean
   public PasswordEncoder passwordEncoder() {
-    return new SCryptPasswordEncoder();
+    return new BCryptPasswordEncoder();
   }
 }

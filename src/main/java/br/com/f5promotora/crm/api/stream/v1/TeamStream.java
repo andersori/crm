@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.stream.Stream;
 import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.TeamForm;
+import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
 import br.com.f5promotora.crm.domain.service.TeamService;
 import br.com.f5promotora.crm.domain.service.v1.TeamServiceImpl;
 import java.util.Set;
@@ -25,7 +25,7 @@ import reactor.core.publisher.Flux;
 
 @RequestMapping("/stream/v1/team")
 @RestController("teamStreamV1")
-public class TeamStream implements Stream<TeamDTO, TeamFilter, TeamForm> {
+public class TeamStream implements Stream<TeamDTO, TeamFilter, TeamFormCreate> {
 
   private final TeamService service;
 
@@ -54,7 +54,7 @@ public class TeamStream implements Stream<TeamDTO, TeamFilter, TeamForm> {
   @PostMapping(
       value = "/import",
       produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
-  public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamForm> forms) {
+  public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamFormCreate> forms) {
     return service.save(forms);
   }
 }

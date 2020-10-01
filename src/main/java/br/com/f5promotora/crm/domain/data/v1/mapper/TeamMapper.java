@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.domain.data.Mapper;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Team;
 import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
-import br.com.f5promotora.crm.domain.data.v1.form.TeamForm;
+import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
 
 @org.mapstruct.Mapper(
     componentModel = "spring",
@@ -14,9 +14,9 @@ public interface TeamMapper
         br.com.f5promotora.crm.domain.data.entity.jpa.account.Team,
         br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Team,
         TeamDTO,
-        TeamForm> {
+        TeamFormCreate> {
 
-  default Team toEntity(TeamForm form, Profile profile) {
+  default Team toEntity(TeamFormCreate form, Profile profile) {
     Team team = toEntity(form);
     team.setOwner(profile);
     return team;

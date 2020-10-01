@@ -20,8 +20,11 @@ public class ProfileCriteria {
                             .map(UUIDToByteArrayConverter.INSTANCE::convert)
                             .collect(Collectors.toSet())));
       }
-      if (filter.getPermission() != null && !filter.getPermission().isEmpty()) {
-        criteria = criteria.and(Criteria.where("permission").in(filter.getPermission()));
+      if (filter.getAuthorities() != null && !filter.getAuthorities().isEmpty()) {
+        criteria = criteria.and(Criteria.where("authorities").in(filter.getAuthorities()));
+      }
+      if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
+        criteria = criteria.and(Criteria.where("roles").in(filter.getRoles()));
       }
       if (filter.getCompanyId() != null) {
         criteria = criteria.and(Criteria.where("company_id").is(filter.getCompanyId()));

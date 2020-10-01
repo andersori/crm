@@ -61,8 +61,8 @@ public class Profile extends Persistable {
   @Column(nullable = false, length = 200)
   private String password;
 
-  @ManyToOne(optional = false)
-  @JoinColumn(name = "company_id", nullable = false)
+  @ManyToOne
+  @JoinColumn(name = "company_id")
   private Company company;
 
   @Column(name = "first_name", nullable = false)
@@ -95,7 +95,13 @@ public class Profile extends Persistable {
   private Set<Campaign> campaign;
 
   public void setRoles(Set<ProfileRole> roles) {
-    this.roles = roles.stream().map(ProfileRole::name).reduce("", (a, b) -> a + ';' + b);
+    this.roles = roles.stream().map(ProfileRole::name).reduce("", (a, b) -> {
+    	if(!a.isEmpty()) {
+    		return a + ';' + b;
+    	} else {
+    		return b;
+    	}
+    });
   }
 
   public Set<ProfileRole> getRoles() {
@@ -116,7 +122,13 @@ public class Profile extends Persistable {
 
   public void setAuthorities(Set<ProfileAuthority> authorities) {
     this.authorities =
-        authorities.stream().map(ProfileAuthority::name).reduce("", (a, b) -> a + ';' + b);
+        authorities.stream().map(ProfileAuthority::name).reduce("", (a, b) -> {
+        	if(!a.isEmpty()) {
+        		return a + ';' + b;
+        	} else {
+        		return b;
+        	}
+        });
   }
 
   public Set<ProfileAuthority> getAuthorities() {

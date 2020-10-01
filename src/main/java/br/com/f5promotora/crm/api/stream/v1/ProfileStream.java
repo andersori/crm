@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.stream.Stream;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
+import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
 import br.com.f5promotora.crm.domain.service.ProfileService;
 import java.util.Set;
 import javax.validation.Valid;
@@ -24,7 +24,7 @@ import reactor.core.publisher.Flux;
 
 @RequestMapping("/stream/v1/profile")
 @RestController("profileStreamControllerV1")
-public class ProfileStream implements Stream<ProfileDTO, ProfileFilter, ProfileForm> {
+public class ProfileStream implements Stream<ProfileDTO, ProfileFilter, ProfileFormCreate> {
 
   private final ProfileService service;
 
@@ -53,7 +53,7 @@ public class ProfileStream implements Stream<ProfileDTO, ProfileFilter, ProfileF
   @PostMapping(
       value = "/import",
       produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
-  public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileForm> forms) {
+  public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileFormCreate> forms) {
     return service.save(forms);
   }
 }

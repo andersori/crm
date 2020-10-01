@@ -1,8 +1,10 @@
 package br.com.f5promotora.crm.domain.data.v1.dto;
 
+import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -23,6 +25,9 @@ public class ProfileDTO {
   private String secondName;
   private CompanyDTO company;
   private ProfileStatus status;
+  private Set<ProfileRole> roles;
   private LocalDateTime lastLogin;
-  private ProfileRole permission;
+  private Set<ProfileAuthority> authorities;
+  private LocalDateTime updatedAt;
+  private LocalDateTime createdAt;
 }

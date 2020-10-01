@@ -1,16 +1,20 @@
 package br.com.f5promotora.crm.domain.service.v1;
 
+import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile;
+import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
+import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
+import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
+import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
 import br.com.f5promotora.crm.domain.data.v1.mapper.ProfileMapper;
 import br.com.f5promotora.crm.domain.service.CompanyService;
 import br.com.f5promotora.crm.domain.service.ProfileService;
 import br.com.f5promotora.crm.resource.jpa.repository.ProfileRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
-import br.com.f5promotora.crm.resource.r2dbc.repository.ProfileReactiveRepo;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -38,14 +42,12 @@ public class ProfileServiceImpl implements ProfileService {
   private final CompanyService companyService;
 
   private final ProfileRepo repo;
-  private final ProfileReactiveRepo reactiveRepo;
+  private final ProfileMapper mapper;
 
   private final DatabaseClient dbClient;
   private final R2dbcEntityTemplate r2dbcTemplate;
 
   private final PasswordEncoder passwordEncoder;
-
-  private final ProfileMapper mapper;
 
   @Override
   public Mono<Long> amount(ProfileFilter filter) {
@@ -67,15 +69,19 @@ public class ProfileServiceImpl implements ProfileService {
             profile ->
                 Mono.just(mapper.toDtoR2dbc(profile))
                     .flatMap(
-                        profileDto ->
-                            companyService
+                        profileDto -> {
+                          if (profile.getCompanyId() != null) {
+                            return companyService
                                 .get(profile.getCompanyId())
                                 .doOnNext(profileDto::setCompany)
-                                .thenReturn(profileDto)));
+                                .thenReturn(profileDto);
+                          }
+                          return Mono.just(profileDto);
+                        }));
   }
 
   @Override
-  public Flux<ProfileDTO> save(Set<ProfileForm> forms) {
+  public Flux<ProfileDTO> save(Set<ProfileFormCreate> forms) {
     return Flux.fromIterable(forms)
         .parallel()
         .runOn(Schedulers.newParallel("save", 10))
@@ -111,52 +117,55 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  public Mono<ProfileDTO> create(ProfileForm form) {
-    return companyService
-        .find(form.getCompanyId())
+  public Mono<ProfileDTO> create(ProfileFormCreate form) {
+    return Mono.zip(emailInUse(form.getEmail()), usernameInUse(form.getUsername()))
+        .doOnNext(
+            zip -> {
+              if (zip.getT1() || zip.getT2()) {
+                StringBuilder str = new StringBuilder();
+                if (zip.getT1()) {
+                  str.append("Email");
+                  if (zip.getT2()) {
+                    str.append(" and Username");
+                  }
+                } else if (zip.getT2()) {
+                  str.append("Username");
+                }
+
+                if (str.toString().length() != 0) {
+                  throw new ResponseStatusException(
+                      HttpStatus.BAD_REQUEST, str.toString() + " in use");
+                }
+              }
+            })
+        .then(Mono.just(mapper.toEntity(form)))
+        .doOnNext(profile -> profile.setStatus(ProfileStatus.INVITED))
+        .doOnNext(profile -> profile.setPassword(passwordEncoder.encode(profile.getPassword())))
+        .doOnNext(
+            profile -> {
+              if (profile.getAuthorities() == null
+                  || (profile.getAuthorities() != null && profile.getAuthorities().isEmpty())) {
+                profile.setAuthorities(Collections.singleton(ProfileAuthority.VIEW));
+              }
+
+              if (profile.getRoles() == null
+                  || (profile.getRoles() != null && profile.getRoles().isEmpty())) {
+                profile.setRoles(Collections.singleton(ProfileRole.REGULAR));
+              }
+            })
         .flatMap(
-            company ->
-                Mono.zip(emailInUse(form.getEmail()), usernameInUse(form.getUsername()))
-                    .doOnNext(
-                        res -> {
-                          if (res.getT1()) {
-                            throw new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "O email " + form.getEmail() + " está em uso");
-                          }
-                          if (res.getT2()) {
-                            throw new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "O username " + form.getUsername() + " está em uso");
-                          }
-                        })
-                    .then(Mono.just(mapper.toEntity(form)))
-                    .doOnNext(profile -> profile.setCompany(company))
-                    .doOnNext(profile -> profile.setStatus(ProfileStatus.INVITED))
-                    .doOnNext(
-                        profile ->
-                            profile.setPassword(passwordEncoder.encode(profile.getPassword())))
-                    .flatMap(
-                        profile ->
-                            filter(
-                                    ProfileFilter.builder().setCompanyId(company.getId()).build(),
-                                    PageRequest.of(0, 1))
-                                .hasElements()
-                                .doOnNext(
-                                    hasElements -> {
-                                      if (!hasElements) {
-                                        // profile.setPermission(ProfileRole.ADMIN);
-                                      } else {
-                                        // profile.setPermission(ProfileRole.REGULAR);
-                                      }
-                                    })
-                                .thenReturn(profile))
-                    .map(repo::save)
-                    .map(mapper::toDtoJpa));
+            profile -> {
+              if (form.getCompanyName() != null) {
+                return setCompanyByName(profile, form.getCompanyName());
+              }
+              return Mono.just(profile);
+            })
+        .map(repo::save)
+        .map(mapper::toDtoJpa);
   }
 
   @Override
-  public Mono<ProfileDTO> update(UUID id, ProfileForm form) {
+  public Mono<ProfileDTO> update(UUID id, ProfileFormCreate form) {
     return Mono.defer(
             () -> {
               Optional<br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile> profile =
@@ -180,6 +189,15 @@ public class ProfileServiceImpl implements ProfileService {
                 profile.setSecondName(form.getSecondName());
               }
             })
+        .doOnNext(
+            profile -> {
+              if (form.getAuthorities() != null && !form.getAuthorities().isEmpty()) {
+                profile.setAuthorities(form.getAuthorities());
+              }
+              if (form.getRoles() != null && !form.getRoles().isEmpty()) {
+                profile.setRoles(form.getRoles());
+              }
+            })
         .flatMap(
             profile -> {
               if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
@@ -197,7 +215,7 @@ public class ProfileServiceImpl implements ProfileService {
         .flatMap(
             profile -> {
               if (form.getUsername() != null && !form.getUsername().isBlank()) {
-                usernameInUse(form.getUsername())
+                return usernameInUse(form.getUsername())
                     .doOnNext(
                         res -> {
                           if (!res) {
@@ -210,15 +228,13 @@ public class ProfileServiceImpl implements ProfileService {
             })
         .flatMap(
             profile -> {
-              if (form.getCompanyId() != null) {
-                if (!profile.getCompany().getId().equals(form.getCompanyId())) {
-                  return companyService
-                      .find(id)
-                      .doOnNext(
-                          company -> {
-                            profile.setCompany(company);
-                          })
-                      .thenReturn(profile);
+              if (form.getCompanyName() != null && profile.getCompany() != null) {
+                if (profile.getCompany() != null) {
+                  if (!profile.getCompany().getName().equals(form.getCompanyName())) {
+                    return setCompanyByName(profile, form.getCompanyName());
+                  }
+                } else {
+                  return setCompanyByName(profile, form.getCompanyName());
                 }
               }
               return Mono.just(profile);
@@ -227,9 +243,45 @@ public class ProfileServiceImpl implements ProfileService {
         .map(mapper::toDtoJpa);
   }
 
+  private Mono<Profile> setCompanyByName(Profile profile, String companyName) {
+    return companyService
+        .filter(CompanyFilter.builder().setNameEquals(companyName).build(), PageRequest.of(0, 1))
+        .next()
+        .map(company -> Company.builder().setId(company.getId()).setName(company.getName()).build())
+        .switchIfEmpty(
+            companyService
+                .create(CompanyFormCreate.builder().setName(companyName).build())
+                .map(
+                    company ->
+                        Company.builder()
+                            .setId(company.getId())
+                            .setName(company.getName())
+                            .build()))
+        .doOnNext(company -> profile.setCompany(company))
+        .thenReturn(profile);
+  }
+
   @Override
   public Mono<Void> delete(UUID id) {
-    return find(id).then(reactiveRepo.deleteById(id));
+    return find(id)
+        .then(
+            dbClient
+                .delete()
+                .from(br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Profile.class)
+                .matching(
+                    ProfileCriteria.execute(
+                        ProfileFilter.builder().setId(Collections.singleton(id)).build()))
+                .fetch()
+                .rowsUpdated())
+        .flatMap(
+            rowsUpdated -> {
+              if (rowsUpdated != 0) {
+                return Mono.empty();
+              }
+              return Mono.error(
+                  new ResponseStatusException(
+                      HttpStatus.BAD_GATEWAY, "It was not possible to remove the profile."));
+            });
   }
 
   @Override

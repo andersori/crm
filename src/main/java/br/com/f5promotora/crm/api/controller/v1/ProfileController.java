@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.ProfileForm;
+import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
 import br.com.f5promotora.crm.domain.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -29,7 +29,7 @@ import reactor.core.publisher.Mono;
 
 @RequestMapping("/v1/profile")
 @RestController("profileControllerV1")
-public class ProfileController implements Controller<ProfileDTO, ProfileFilter, ProfileForm> {
+public class ProfileController implements Controller<ProfileDTO, ProfileFilter, ProfileFormCreate> {
 
   private final ProfileService service;
 
@@ -39,14 +39,14 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
 
   @Override
   @GetMapping
-  public Flux<ProfileDTO> filter(
-      @RequestParam(required = false) ProfileFilter filter,
+  public Flux<ProfileDTO> filter(ProfileFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
       @RequestParam(required = false, defaultValue = "id") String[] properties,
       @RequestParam(required = false, defaultValue = "ASC") Direction direction,
       ServerHttpResponse response) {
+	  System.out.println(filter.toString());
     if (isPaged) {
       return Commons.execute(
           service, filter, PageRequest.of(page, size, direction, properties), response);
@@ -56,7 +56,7 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
 
   @Override
   @PostMapping
-  public Mono<ProfileDTO> create(@Valid @RequestBody ProfileForm form) {
+  public Mono<ProfileDTO> create(@Valid @RequestBody ProfileFormCreate form) {
     return service.create(form);
   }
 
@@ -64,7 +64,8 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   @PutMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<ProfileDTO> update(@PathVariable UUID id, @Valid @RequestBody ProfileForm form) {
+  public Mono<ProfileDTO> update(
+      @PathVariable UUID id, @RequestBody ProfileFormCreate form) {
     return service.update(id, form);
   }
 
@@ -72,7 +73,7 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   @PostMapping("/import")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileForm> forms) {
+  public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileFormCreate> forms) {
     return service.save(forms);
   }
 

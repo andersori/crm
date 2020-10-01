@@ -3,12 +3,13 @@ package br.com.f5promotora.crm.domain.service.v1;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
 import br.com.f5promotora.crm.domain.data.v1.dto.CompanyDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.CompanyForm;
+import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
+import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
 import br.com.f5promotora.crm.domain.data.v1.mapper.CompanyMapper;
 import br.com.f5promotora.crm.domain.service.CompanyService;
 import br.com.f5promotora.crm.resource.jpa.repository.CompanyRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.CompanyCriteria;
-import br.com.f5promotora.crm.resource.r2dbc.repository.CompanyReactiveRepo;
+import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
@@ -31,7 +32,6 @@ public class CompanyServiceImpl implements CompanyService {
 
   private final CompanyRepo repo;
   private final DatabaseClient dbClient;
-  private final CompanyReactiveRepo reactiveRepo;
   private final R2dbcEntityTemplate r2dbcTemplate;
 
   private final CompanyMapper mapper;
@@ -56,7 +56,7 @@ public class CompanyServiceImpl implements CompanyService {
   }
 
   @Override
-  public Flux<CompanyDTO> save(Set<CompanyForm> forms) {
+  public Flux<CompanyDTO> save(Set<CompanyFormCreate> forms) {
     return Flux.fromIterable(forms)
         .parallel()
         .runOn(Schedulers.newParallel("save", 10))
@@ -82,7 +82,7 @@ public class CompanyServiceImpl implements CompanyService {
   }
 
   @Override
-  public Mono<CompanyDTO> create(CompanyForm form) {
+  public Mono<CompanyDTO> create(CompanyFormCreate form) {
     return nameInUse(form.getName())
         .doOnNext(
             exists -> {
@@ -97,7 +97,7 @@ public class CompanyServiceImpl implements CompanyService {
   }
 
   @Override
-  public Mono<CompanyDTO> update(UUID id, CompanyForm form) {
+  public Mono<CompanyDTO> update(UUID id, CompanyFormCreate form) {
     return find(id)
         .flatMap(
             company -> {
@@ -121,7 +121,25 @@ public class CompanyServiceImpl implements CompanyService {
 
   @Override
   public Mono<Void> delete(UUID id) {
-    return find(id).then(reactiveRepo.deleteById(id));
+    return find(id)
+        .then(
+            dbClient
+                .delete()
+                .from(br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Company.class)
+                .matching(
+                    ProfileCriteria.execute(
+                        ProfileFilter.builder().setId(Collections.singleton(id)).build()))
+                .fetch()
+                .rowsUpdated())
+        .flatMap(
+            rowsUpdated -> {
+              if (rowsUpdated != 0) {
+                return Mono.empty();
+              }
+              return Mono.error(
+                  new ResponseStatusException(
+                      HttpStatus.BAD_GATEWAY, "It was not possible to remove the profile."));
+            });
   }
 
   @Override

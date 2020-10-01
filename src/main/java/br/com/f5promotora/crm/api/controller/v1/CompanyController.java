@@ -4,7 +4,7 @@ import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
 import br.com.f5promotora.crm.domain.data.v1.dto.CompanyDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.CompanyForm;
+import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
 import br.com.f5promotora.crm.domain.service.CompanyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,7 +30,7 @@ import reactor.core.publisher.Mono;
 
 @RequestMapping("/v1/company")
 @RestController("companyControllerV1")
-public class CompanyController implements Controller<CompanyDTO, CompanyFilter, CompanyForm> {
+public class CompanyController implements Controller<CompanyDTO, CompanyFilter, CompanyFormCreate> {
 
   private final CompanyService service;
 
@@ -40,8 +40,7 @@ public class CompanyController implements Controller<CompanyDTO, CompanyFilter, 
 
   @Override
   @GetMapping
-  public Flux<CompanyDTO> filter(
-      @RequestParam(required = false) CompanyFilter filter,
+  public Flux<CompanyDTO> filter(CompanyFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
@@ -57,7 +56,7 @@ public class CompanyController implements Controller<CompanyDTO, CompanyFilter, 
 
   @Override
   @PostMapping
-  public Mono<CompanyDTO> create(@Valid @RequestBody CompanyForm form) {
+  public Mono<CompanyDTO> create(@Valid @RequestBody CompanyFormCreate form) {
     return service.create(form);
   }
 
@@ -65,7 +64,8 @@ public class CompanyController implements Controller<CompanyDTO, CompanyFilter, 
   @PutMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<CompanyDTO> update(@PathVariable UUID id, @Valid @RequestBody CompanyForm form) {
+  public Mono<CompanyDTO> update(
+      @PathVariable UUID id, @Valid @RequestBody CompanyFormCreate form) {
     return service.update(id, form);
   }
 
@@ -73,7 +73,7 @@ public class CompanyController implements Controller<CompanyDTO, CompanyFilter, 
   @PostMapping("/import")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<CompanyDTO> save(@Valid @RequestBody Set<CompanyForm> forms) {
+  public Flux<CompanyDTO> save(@Valid @RequestBody Set<CompanyFormCreate> forms) {
     return service.save(forms);
   }
 

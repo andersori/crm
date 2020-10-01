@@ -3,7 +3,7 @@ package br.com.f5promotora.crm.domain.service.v1;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Team;
 import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
-import br.com.f5promotora.crm.domain.data.v1.form.TeamForm;
+import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
 import br.com.f5promotora.crm.domain.data.v1.mapper.TeamMapper;
 import br.com.f5promotora.crm.domain.service.ProfileService;
 import br.com.f5promotora.crm.domain.service.TeamService;
@@ -67,7 +67,7 @@ public class TeamServiceImpl implements TeamService {
   }
 
   @Override
-  public Flux<TeamDTO> save(Set<TeamForm> forms) {
+  public Flux<TeamDTO> save(Set<TeamFormCreate> forms) {
     return Flux.fromIterable(forms)
         .parallel()
         .runOn(Schedulers.newParallel("save", 10))
@@ -106,7 +106,7 @@ public class TeamServiceImpl implements TeamService {
   }
 
   @Override
-  public Mono<TeamDTO> create(TeamForm form) {
+  public Mono<TeamDTO> create(TeamFormCreate form) {
     return profileService
         .find(form.getOwnerId())
         .map(profile -> mapper.toEntity(form, profile))
@@ -115,7 +115,7 @@ public class TeamServiceImpl implements TeamService {
   }
 
   @Override
-  public Mono<TeamDTO> update(UUID id, TeamForm form) {
+  public Mono<TeamDTO> update(UUID id, TeamFormCreate form) {
 
     return null;
   }
