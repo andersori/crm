@@ -1,8 +1,9 @@
 package br.com.f5promotora.crm.domain.data.enums;
 
-public enum ProfileAuthority {
+public enum ProfilePermission {
   CREATE,
   VIEW,
   UPDATE,
-  REMOVE
+  REMOVE,
+  IMPORT
 }

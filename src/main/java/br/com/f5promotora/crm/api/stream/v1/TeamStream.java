@@ -55,6 +55,6 @@ public class TeamStream implements Stream<TeamDTO, TeamFilter, TeamFormCreate> {
       value = "/import",
       produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
   public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamFormCreate> forms) {
-    return service.save(forms);
+    return service.save(forms).flatMapMany(res -> Flux.fromIterable(res.getSuccess()));
   }
 }

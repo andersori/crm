@@ -54,6 +54,6 @@ public class CompanyStream implements Stream<CompanyDTO, CompanyFilter, CompanyF
       value = "/import",
       produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
   public Flux<CompanyDTO> save(@Valid @RequestBody Set<CompanyFormCreate> forms) {
-    return service.save(forms);
+    return service.save(forms).flatMapMany(res -> Flux.fromIterable(res.getSuccess()));
   }
 }

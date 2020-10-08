@@ -1,5 +1,6 @@
 package br.com.f5promotora.crm.domain.service;
 
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +12,7 @@ public interface Service<DTO, Form, Filter, EntityJPA> {
 
   Flux<DTO> filter(Filter filter, Pageable pageable);
 
-  Flux<DTO> save(Set<Form> forms);
+  Mono<ImportResult<DTO, Form>> save(Set<Form> forms);
 
   Mono<DTO> get(UUID id);
 

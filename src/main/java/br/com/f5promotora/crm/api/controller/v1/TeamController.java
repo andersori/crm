@@ -2,6 +2,7 @@ package br.com.f5promotora.crm.api.controller.v1;
 
 import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
@@ -43,7 +44,8 @@ public class TeamController implements Controller<TeamDTO, TeamFilter, TeamFormC
   @GetMapping
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<TeamDTO> filter(TeamFilter filter,
+  public Flux<TeamDTO> filter(
+      TeamFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
@@ -77,7 +79,8 @@ public class TeamController implements Controller<TeamDTO, TeamFilter, TeamFormC
   @PostMapping("/import")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<TeamDTO> save(@Valid @RequestBody Set<TeamFormCreate> forms) {
+  public Mono<ImportResult<TeamDTO, TeamFormCreate>> save(
+      @Valid @RequestBody Set<TeamFormCreate> forms) {
     return service.save(forms);
   }
 

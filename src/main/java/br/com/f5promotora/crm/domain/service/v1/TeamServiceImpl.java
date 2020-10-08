@@ -1,6 +1,7 @@
 package br.com.f5promotora.crm.domain.service.v1;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Team;
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
@@ -67,8 +68,8 @@ public class TeamServiceImpl implements TeamService {
   }
 
   @Override
-  public Flux<TeamDTO> save(Set<TeamFormCreate> forms) {
-    return Flux.fromIterable(forms)
+  public Mono<ImportResult<TeamDTO, TeamFormCreate>> save(Set<TeamFormCreate> forms) {
+    Flux.fromIterable(forms)
         .parallel()
         .runOn(Schedulers.newParallel("save", 10))
         .flatMap(
@@ -88,6 +89,8 @@ public class TeamServiceImpl implements TeamService {
                           return update(teams.get(0).getId(), form);
                         }))
         .sequential();
+
+    return null;
   }
 
   @Override

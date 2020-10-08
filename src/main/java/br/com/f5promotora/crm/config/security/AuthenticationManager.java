@@ -1,7 +1,8 @@
 package br.com.f5promotora.crm.config.security;
 
 import br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Profile;
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
+import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
 import com.auth0.jwt.JWT;
@@ -11,7 +12,9 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.r2dbc.core.DatabaseClient;
 import org.springframework.http.HttpStatus;
@@ -72,19 +75,9 @@ public class AuthenticationManager implements ReactiveAuthenticationManager {
                               return new UsernamePasswordAuthenticationToken(
                                   profile,
                                   password,
-                                  profile.getAuthorities().stream()
-                                      .map(ProfileAuthority::name)
-                                      .map(
-                                          autority -> {
-                                            return new GrantedAuthority() {
-                                              private static final long serialVersionUID = 1L;
-
-                                              @Override
-                                              public String getAuthority() {
-                                                return autority;
-                                              }
-                                            };
-                                          })
+                                  Stream.concat(
+                                          mapRoles(profile.getRoles()).stream(),
+                                          mapPermissions(profile.getPermissions()).stream())
                                       .collect(Collectors.toSet()));
                             }
                             throw new ResponseStatusException(
@@ -98,25 +91,16 @@ public class AuthenticationManager implements ReactiveAuthenticationManager {
               } else if (authType.equals(AuthType.BEARER)) {
                 try {
                   DecodedJWT jwt = verifier.verify(JWT.decode(credentials));
+
                   return findByUsername(jwt.getSubject())
                       .map(
                           profile -> {
                             return new UsernamePasswordAuthenticationToken(
                                 profile,
                                 credentials,
-                                profile.getAuthorities().stream()
-                                    .map(ProfileAuthority::name)
-                                    .map(
-                                        autority -> {
-                                          return new GrantedAuthority() {
-                                            private static final long serialVersionUID = 1L;
-
-                                            @Override
-                                            public String getAuthority() {
-                                              return autority;
-                                            }
-                                          };
-                                        })
+                                Stream.concat(
+                                        mapRoles(profile.getRoles()).stream(),
+                                        mapPermissions(profile.getPermissions()).stream())
                                     .collect(Collectors.toSet()));
                           });
                 } catch (JWTVerificationException ex) {
@@ -142,5 +126,39 @@ public class AuthenticationManager implements ReactiveAuthenticationManager {
             Mono.error(
                 new UsernameNotFoundException(
                     "Profile with username " + username + " not found.")));
+  }
+
+  private Set<GrantedAuthority> mapRoles(Set<ProfileRole> roles) {
+    return roles.stream()
+        .map(ProfileRole::name)
+        .map(
+            autority -> {
+              return new GrantedAuthority() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public String getAuthority() {
+                  return "ROLE_" + autority;
+                }
+              };
+            })
+        .collect(Collectors.toSet());
+  }
+
+  private Set<GrantedAuthority> mapPermissions(Set<ProfilePermission> permissions) {
+    return permissions.stream()
+        .map(ProfilePermission::name)
+        .map(
+            permission -> {
+              return new GrantedAuthority() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public String getAuthority() {
+                  return "PERMISSION_" + permission;
+                }
+              };
+            })
+        .collect(Collectors.toSet());
   }
 }

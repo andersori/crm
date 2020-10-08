@@ -2,7 +2,7 @@ package br.com.f5promotora.crm.domain.data.entity.jpa.account;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.Persistable;
 import br.com.f5promotora.crm.domain.data.entity.jpa.accompaniment.Campaign;
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import java.time.LocalDateTime;
@@ -82,7 +82,7 @@ public class Profile extends Persistable {
   private String roles;
 
   @Column(nullable = false, length = 300)
-  private String authorities;
+  private String permissions;
 
   @OneToMany
   @JoinColumn(name = "manager")
@@ -95,13 +95,18 @@ public class Profile extends Persistable {
   private Set<Campaign> campaign;
 
   public void setRoles(Set<ProfileRole> roles) {
-    this.roles = roles.stream().map(ProfileRole::name).reduce("", (a, b) -> {
-    	if(!a.isEmpty()) {
-    		return a + ';' + b;
-    	} else {
-    		return b;
-    	}
-    });
+    this.roles =
+        roles.stream()
+            .map(ProfileRole::name)
+            .reduce(
+                "",
+                (a, b) -> {
+                  if (!a.isEmpty()) {
+                    return a + ';' + b;
+                  } else {
+                    return b;
+                  }
+                });
   }
 
   public Set<ProfileRole> getRoles() {
@@ -120,27 +125,31 @@ public class Profile extends Persistable {
         .collect(Collectors.toSet());
   }
 
-  public void setAuthorities(Set<ProfileAuthority> authorities) {
-    this.authorities =
-        authorities.stream().map(ProfileAuthority::name).reduce("", (a, b) -> {
-        	if(!a.isEmpty()) {
-        		return a + ';' + b;
-        	} else {
-        		return b;
-        	}
-        });
+  public void setPermissions(Set<ProfilePermission> permissions) {
+    this.permissions =
+        permissions.stream()
+            .map(ProfilePermission::name)
+            .reduce(
+                "",
+                (a, b) -> {
+                  if (!a.isEmpty()) {
+                    return a + ';' + b;
+                  } else {
+                    return b;
+                  }
+                });
   }
 
-  public Set<ProfileAuthority> getAuthorities() {
-    return Arrays.asList(authorities.split(";")).stream()
+  public Set<ProfilePermission> getPermissions() {
+    return Arrays.asList(permissions.split(";")).stream()
         .map(
             authority -> {
               try {
-                return Optional.of(ProfileAuthority.valueOf(authority));
+                return Optional.of(ProfilePermission.valueOf(authority));
               } catch (IllegalArgumentException e) {
                 /*IGNORE*/
               }
-              return Optional.<ProfileAuthority>empty();
+              return Optional.<ProfilePermission>empty();
             })
         .filter(Optional::isPresent)
         .map(Optional::get)
@@ -159,7 +168,7 @@ public class Profile extends Persistable {
       ProfileStatus status,
       LocalDateTime lastLogin,
       Set<ProfileRole> roles,
-      Set<ProfileAuthority> authorities,
+      Set<ProfilePermission> permissions,
       Set<Team> managedTeams,
       Set<Team> teams,
       Set<Campaign> campaign) {
@@ -173,7 +182,7 @@ public class Profile extends Persistable {
     this.status = status;
     this.lastLogin = lastLogin;
     setRoles(roles);
-    setAuthorities(authorities);
+    setPermissions(permissions);
     this.managedTeams = managedTeams;
     this.teams = teams;
     this.campaign = campaign;

@@ -54,6 +54,6 @@ public class ProfileStream implements Stream<ProfileDTO, ProfileFilter, ProfileF
       value = "/import",
       produces = {MediaType.APPLICATION_STREAM_JSON_VALUE})
   public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileFormCreate> forms) {
-    return service.save(forms);
+    return service.save(forms).flatMapMany(res -> Flux.fromIterable(res.getSuccess()));
   }
 }

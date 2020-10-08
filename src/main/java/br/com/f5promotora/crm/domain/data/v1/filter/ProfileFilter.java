@@ -1,6 +1,6 @@
 package br.com.f5promotora.crm.domain.data.v1.filter;
 
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import java.time.LocalDateTime;
@@ -33,5 +33,5 @@ public class ProfileFilter {
   private LocalDateTime lastLoginBefore;
   private LocalDateTime lastLoginAfter;
   private Set<ProfileRole> roles;
-  private Set<ProfileAuthority> authorities;
+  private Set<ProfilePermission> authorities;
 }

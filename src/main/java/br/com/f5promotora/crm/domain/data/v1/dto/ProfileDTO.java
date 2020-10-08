@@ -1,6 +1,6 @@
 package br.com.f5promotora.crm.domain.data.v1.dto;
 
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import java.time.LocalDateTime;
@@ -27,7 +27,7 @@ public class ProfileDTO {
   private ProfileStatus status;
   private Set<ProfileRole> roles;
   private LocalDateTime lastLogin;
-  private Set<ProfileAuthority> authorities;
+  private Set<ProfilePermission> authorities;
   private LocalDateTime updatedAt;
   private LocalDateTime createdAt;
 }

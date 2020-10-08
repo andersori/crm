@@ -1,5 +1,6 @@
 package br.com.f5promotora.crm.api.controller;
 
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Sort.Direction;
@@ -21,7 +22,7 @@ public interface Controller<DTO, Filter, Form> {
 
   Mono<DTO> update(UUID id, Form form);
 
-  Flux<DTO> save(Set<Form> forms);
+  Mono<ImportResult<DTO, Form>> save(Set<Form> forms);
 
   Mono<DTO> get(UUID id);
 

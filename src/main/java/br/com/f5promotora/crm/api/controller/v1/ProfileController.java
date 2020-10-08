@@ -2,6 +2,7 @@ package br.com.f5promotora.crm.api.controller.v1;
 
 import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
@@ -16,6 +17,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,14 +42,14 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
 
   @Override
   @GetMapping
-  public Flux<ProfileDTO> filter(ProfileFilter filter,
+  public Flux<ProfileDTO> filter(
+      ProfileFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
       @RequestParam(required = false, defaultValue = "id") String[] properties,
       @RequestParam(required = false, defaultValue = "ASC") Direction direction,
       ServerHttpResponse response) {
-	  System.out.println(filter.toString());
     if (isPaged) {
       return Commons.execute(
           service, filter, PageRequest.of(page, size, direction, properties), response);
@@ -64,21 +67,23 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   @PutMapping("/{id}")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Mono<ProfileDTO> update(
-      @PathVariable UUID id, @RequestBody ProfileFormCreate form) {
+  public Mono<ProfileDTO> update(@PathVariable UUID id, @RequestBody ProfileFormCreate form) {
     return service.update(id, form);
   }
 
   @Override
   @PostMapping("/import")
+  @PreAuthorize("hasAuthority('PERMISSION_VIEW') and hasRole('ADMIN')")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<ProfileDTO> save(@Valid @RequestBody Set<ProfileFormCreate> forms) {
+  public Mono<ImportResult<ProfileDTO, ProfileFormCreate>> save(
+      @Valid @RequestBody Set<ProfileFormCreate> forms) {
     return service.save(forms);
   }
 
   @Override
   @GetMapping("/{id}")
+  @PreAuthorize("hasAuthority('PERMISSION_VIEW') and hasRole('ADMIN')")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
   public Mono<ProfileDTO> get(@PathVariable UUID id) {
@@ -86,6 +91,8 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
   }
 
   @Override
+  @DeleteMapping("/{id}")
+  @PreAuthorize("hasAuthority('PERMISSION_REMOVE') and hasRole('ADMIN')")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
   public Mono<Void> delete(@PathVariable UUID id) {

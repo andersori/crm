@@ -1,6 +1,6 @@
 package br.com.f5promotora.crm.domain.data.v1.form;
 
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import java.util.Set;
 import javax.validation.constraints.NotBlank;
@@ -27,5 +27,5 @@ public class ProfileFormCreate {
   private String companyName;
   private String secondName;
   @NotEmpty private Set<ProfileRole> roles;
-  @NotEmpty private Set<ProfileAuthority> authorities;
+  @NotEmpty private Set<ProfilePermission> permissions;
 }

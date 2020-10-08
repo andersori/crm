@@ -2,9 +2,10 @@ package br.com.f5promotora.crm.domain.service.v1;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile;
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
@@ -16,7 +17,6 @@ import br.com.f5promotora.crm.domain.service.ProfileService;
 import br.com.f5promotora.crm.resource.jpa.repository.ProfileRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
 import java.util.Collections;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
@@ -81,8 +81,8 @@ public class ProfileServiceImpl implements ProfileService {
   }
 
   @Override
-  public Flux<ProfileDTO> save(Set<ProfileFormCreate> forms) {
-    return Flux.fromIterable(forms)
+  public Mono<ImportResult<ProfileDTO, ProfileFormCreate>> save(Set<ProfileFormCreate> forms) {
+    Flux.fromIterable(forms)
         .parallel()
         .runOn(Schedulers.newParallel("save", 10))
         .flatMap(
@@ -99,6 +99,8 @@ public class ProfileServiceImpl implements ProfileService {
                           return update(profiles.get(0).getId(), form);
                         }))
         .sequential();
+
+    return null;
   }
 
   @Override
@@ -143,9 +145,9 @@ public class ProfileServiceImpl implements ProfileService {
         .doOnNext(profile -> profile.setPassword(passwordEncoder.encode(profile.getPassword())))
         .doOnNext(
             profile -> {
-              if (profile.getAuthorities() == null
-                  || (profile.getAuthorities() != null && profile.getAuthorities().isEmpty())) {
-                profile.setAuthorities(Collections.singleton(ProfileAuthority.VIEW));
+              if (profile.getPermissions() == null
+                  || (profile.getPermissions() != null && profile.getPermissions().isEmpty())) {
+                profile.setPermissions(Collections.singleton(ProfilePermission.VIEW));
               }
 
               if (profile.getRoles() == null
@@ -166,16 +168,7 @@ public class ProfileServiceImpl implements ProfileService {
 
   @Override
   public Mono<ProfileDTO> update(UUID id, ProfileFormCreate form) {
-    return Mono.defer(
-            () -> {
-              Optional<br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile> profile =
-                  repo.findById(id);
-
-              if (profile.isPresent()) {
-                return Mono.just(profile.get());
-              }
-              return Mono.empty();
-            })
+    return Mono.justOrEmpty(repo.findById(id))
         .switchIfEmpty(
             Mono.error(
                 new ResponseStatusException(
@@ -191,8 +184,8 @@ public class ProfileServiceImpl implements ProfileService {
             })
         .doOnNext(
             profile -> {
-              if (form.getAuthorities() != null && !form.getAuthorities().isEmpty()) {
-                profile.setAuthorities(form.getAuthorities());
+              if (form.getPermissions() != null && !form.getPermissions().isEmpty()) {
+                profile.setPermissions(form.getPermissions());
               }
               if (form.getRoles() != null && !form.getRoles().isEmpty()) {
                 profile.setRoles(form.getRoles());

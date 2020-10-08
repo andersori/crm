@@ -2,7 +2,10 @@ package br.com.f5promotora.crm.resource.r2dbc.criteria;
 
 import br.com.f5promotora.crm.config.database.r2dbc.UUIDToByteArrayConverter;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile_;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
+import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.CriteriaDefinition;
@@ -21,10 +24,28 @@ public class ProfileCriteria {
                             .collect(Collectors.toSet())));
       }
       if (filter.getAuthorities() != null && !filter.getAuthorities().isEmpty()) {
-        criteria = criteria.and(Criteria.where("authorities").in(filter.getAuthorities()));
+        Optional<Criteria> criteriaTemp =
+            filter.getAuthorities().stream()
+                .map(ProfilePermission::name)
+                .map(String::toUpperCase)
+                .map(authority -> Criteria.where("authorities").like("%" + authority + "%"))
+                .reduce((a, b) -> a.and(b));
+
+        if (criteriaTemp.isPresent()) {
+          criteria = criteria.and(criteriaTemp.get());
+        }
       }
       if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
-        criteria = criteria.and(Criteria.where("roles").in(filter.getRoles()));
+        Optional<Criteria> criteriaTemp =
+            filter.getRoles().stream()
+                .map(ProfileRole::name)
+                .map(String::toUpperCase)
+                .map(role -> Criteria.where("roles").like("%" + role + "%"))
+                .reduce((a, b) -> a.and(b));
+
+        if (criteriaTemp.isPresent()) {
+          criteria = criteria.and(criteriaTemp.get());
+        }
       }
       if (filter.getCompanyId() != null) {
         criteria = criteria.and(Criteria.where("company_id").is(filter.getCompanyId()));

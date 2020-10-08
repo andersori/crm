@@ -2,6 +2,7 @@ package br.com.f5promotora.crm.domain.service.v1;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
 import br.com.f5promotora.crm.domain.data.v1.dto.CompanyDTO;
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
@@ -11,14 +12,16 @@ import br.com.f5promotora.crm.resource.jpa.repository.CompanyRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.CompanyCriteria;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.DatabaseClient;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.util.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -56,24 +59,47 @@ public class CompanyServiceImpl implements CompanyService {
   }
 
   @Override
-  public Flux<CompanyDTO> save(Set<CompanyFormCreate> forms) {
+  public Mono<ImportResult<CompanyDTO, CompanyFormCreate>> save(Set<CompanyFormCreate> forms) {
     return Flux.fromIterable(forms)
         .parallel()
-        .runOn(Schedulers.newParallel("save", 10))
+        .runOn(Schedulers.newParallel("save", 3))
         .flatMap(
             form ->
-                filter(
-                        CompanyFilter.builder().setNameEquals(form.getName()).build(),
-                        PageRequest.of(0, 1))
-                    .collectList()
-                    .flatMap(
-                        company -> {
-                          if (company.isEmpty()) {
-                            return create(form);
-                          }
-                          return update(company.get(0).getId(), form);
-                        }))
-        .sequential();
+                create(form)
+                    .map(
+                        company ->
+                            Pair.of(
+                                Optional.of(company),
+                                Optional.<Pair<CompanyFormCreate, String>>empty()))
+                    .onErrorResume(
+                        ex ->
+                            Mono.just(
+                                Pair.of(
+                                    Optional.<CompanyDTO>empty(),
+                                    Optional.of(
+                                        Pair.of(
+                                            form, ((ResponseStatusException) ex).getReason()))))))
+        .sequential()
+        .collectList()
+        .flatMap(
+            companies ->
+                Mono.just(new ImportResult<CompanyDTO, CompanyFormCreate>())
+                    .doOnNext(
+                        res -> {
+                          res.setSuccess(
+                              companies.stream()
+                                  .map(Pair::getFirst)
+                                  .filter(Optional::isPresent)
+                                  .map(Optional::get)
+                                  .collect(Collectors.toSet()));
+
+                          res.setFlaws(
+                              companies.stream()
+                                  .map(Pair::getSecond)
+                                  .filter(Optional::isPresent)
+                                  .map(Optional::get)
+                                  .collect(Collectors.toSet()));
+                        }));
   }
 
   @Override

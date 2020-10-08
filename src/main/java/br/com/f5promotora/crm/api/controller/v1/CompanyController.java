@@ -3,6 +3,7 @@ package br.com.f5promotora.crm.api.controller.v1;
 import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
 import br.com.f5promotora.crm.domain.data.v1.dto.CompanyDTO;
+import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
 import br.com.f5promotora.crm.domain.service.CompanyService;
@@ -40,7 +41,8 @@ public class CompanyController implements Controller<CompanyDTO, CompanyFilter, 
 
   @Override
   @GetMapping
-  public Flux<CompanyDTO> filter(CompanyFilter filter,
+  public Flux<CompanyDTO> filter(
+      CompanyFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
       @RequestParam(required = false, defaultValue = "0") Integer page,
       @RequestParam(required = false, defaultValue = "10") Integer size,
@@ -73,7 +75,8 @@ public class CompanyController implements Controller<CompanyDTO, CompanyFilter, 
   @PostMapping("/import")
   @Operation(
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
-  public Flux<CompanyDTO> save(@Valid @RequestBody Set<CompanyFormCreate> forms) {
+  public Mono<ImportResult<CompanyDTO, CompanyFormCreate>> save(
+      @Valid @RequestBody Set<CompanyFormCreate> forms) {
     return service.save(forms);
   }
 

@@ -1,7 +1,7 @@
 package br.com.f5promotora.crm.domain.data.entity.r2dbc.account;
 
 import br.com.f5promotora.crm.domain.data.entity.r2dbc.Persistable;
-import br.com.f5promotora.crm.domain.data.enums.ProfileAuthority;
+import br.com.f5promotora.crm.domain.data.enums.ProfilePermission;
 import br.com.f5promotora.crm.domain.data.enums.ProfileRole;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -55,10 +55,21 @@ public class Profile extends Persistable {
 
   private String roles;
 
-  private String authorities;
+  private String permissions;
 
   public void setRoles(Set<ProfileRole> roles) {
-    this.roles = roles.stream().map(ProfileRole::name).reduce("", (a, b) -> a + ';' + b);
+    this.roles =
+        roles.stream()
+            .map(ProfileRole::name)
+            .reduce(
+                "",
+                (a, b) -> {
+                  if (!a.isEmpty()) {
+                    return a + ';' + b;
+                  } else {
+                    return b;
+                  }
+                });
   }
 
   public Set<ProfileRole> getRoles() {
@@ -77,21 +88,31 @@ public class Profile extends Persistable {
         .collect(Collectors.toSet());
   }
 
-  public void setAuthorities(Set<ProfileAuthority> authorities) {
-    this.authorities =
-        authorities.stream().map(ProfileAuthority::name).reduce("", (a, b) -> a + ';' + b);
+  public void setPermissions(Set<ProfilePermission> permissions) {
+    this.permissions =
+        permissions.stream()
+            .map(ProfilePermission::name)
+            .reduce(
+                "",
+                (a, b) -> {
+                  if (!a.isEmpty()) {
+                    return a + ';' + b;
+                  } else {
+                    return b;
+                  }
+                });
   }
 
-  public Set<ProfileAuthority> getAuthorities() {
-    return Arrays.asList(authorities.split(";")).stream()
+  public Set<ProfilePermission> getPermissions() {
+    return Arrays.asList(permissions.split(";")).stream()
         .map(
             authority -> {
               try {
-                return Optional.of(ProfileAuthority.valueOf(authority));
+                return Optional.of(ProfilePermission.valueOf(authority));
               } catch (IllegalArgumentException e) {
                 /* IGNORE */
               }
-              return Optional.<ProfileAuthority>empty();
+              return Optional.<ProfilePermission>empty();
             })
         .filter(Optional::isPresent)
         .map(Optional::get)
@@ -110,7 +131,7 @@ public class Profile extends Persistable {
       String status,
       LocalDateTime lastLogin,
       Set<ProfileRole> roles,
-      Set<ProfileAuthority> authorities) {
+      Set<ProfilePermission> permissions) {
     this.id = id;
     this.email = email;
     this.username = username;
@@ -121,6 +142,6 @@ public class Profile extends Persistable {
     this.status = status;
     this.lastLogin = lastLogin;
     setRoles(roles);
-    setAuthorities(authorities);
+    setPermissions(permissions);
   }
 }
