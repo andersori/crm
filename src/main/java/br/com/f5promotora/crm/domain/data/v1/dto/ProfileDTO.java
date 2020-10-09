@@ -27,7 +27,7 @@ public class ProfileDTO {
   private ProfileStatus status;
   private Set<ProfileRole> roles;
   private LocalDateTime lastLogin;
-  private Set<ProfilePermission> authorities;
+  private Set<ProfilePermission> permissions;
   private LocalDateTime updatedAt;
   private LocalDateTime createdAt;
 }

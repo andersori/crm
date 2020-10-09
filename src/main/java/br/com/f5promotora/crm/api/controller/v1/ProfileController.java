@@ -2,9 +2,11 @@ package br.com.f5promotora.crm.api.controller.v1;
 
 import br.com.f5promotora.crm.api.Commons;
 import br.com.f5promotora.crm.api.controller.Controller;
+import br.com.f5promotora.crm.domain.data.enums.ProfileStatus;
 import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
+import br.com.f5promotora.crm.domain.data.v1.form.AuthPassword;
 import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
 import br.com.f5promotora.crm.domain.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +22,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -42,6 +45,8 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
 
   @Override
   @GetMapping
+  @Operation(
+      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
   public Flux<ProfileDTO> filter(
       ProfileFilter filter,
       @RequestParam(required = false, defaultValue = "true") Boolean isPaged,
@@ -97,5 +102,18 @@ public class ProfileController implements Controller<ProfileDTO, ProfileFilter, 
       security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
   public Mono<Void> delete(@PathVariable UUID id) {
     return service.delete(id);
+  }
+
+  @PatchMapping("/{id}/status")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      security = {@SecurityRequirement(name = "bearer-jwt"), @SecurityRequirement(name = "basic")})
+  public Mono<ProfileDTO> changeStatus(UUID id, ProfileStatus status) {
+    return service.changeStatus(id, status);
+  }
+
+  @PostMapping("/auth/jwt")
+  public Mono<String> authJWT(@Valid @RequestBody AuthPassword auth) {
+    return service.authJWT(auth);
   }
 }

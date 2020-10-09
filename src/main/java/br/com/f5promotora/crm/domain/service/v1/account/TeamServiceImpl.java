@@ -1,4 +1,4 @@
-package br.com.f5promotora.crm.domain.service.v1;
+package br.com.f5promotora.crm.domain.service.v1.account;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Team;
 import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
@@ -12,14 +12,17 @@ import br.com.f5promotora.crm.resource.jpa.repository.TeamRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.TeamCriteria;
 import br.com.f5promotora.crm.resource.r2dbc.repository.TeamReactiveRepo;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.DatabaseClient;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.util.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -69,7 +72,7 @@ public class TeamServiceImpl implements TeamService {
 
   @Override
   public Mono<ImportResult<TeamDTO, TeamFormCreate>> save(Set<TeamFormCreate> forms) {
-    Flux.fromIterable(forms)
+    return Flux.fromIterable(forms)
         .parallel()
         .runOn(Schedulers.newParallel("save", 10))
         .flatMap(
@@ -80,32 +83,50 @@ public class TeamServiceImpl implements TeamService {
                             .setNameEquals(form.getName())
                             .build(),
                         PageRequest.of(0, 1))
-                    .collectList()
-                    .flatMap(
-                        teams -> {
-                          if (teams.isEmpty()) {
-                            return create(form);
-                          }
-                          return update(teams.get(0).getId(), form);
-                        }))
-        .sequential();
-
-    return null;
+                    .next()
+                    .flatMap(team -> update(team.getId(), form))
+                    .switchIfEmpty(create(form))
+                    .map(
+                        team ->
+                            Pair.of(
+                                Optional.of(team), Optional.<Pair<TeamFormCreate, String>>empty()))
+                    .onErrorResume(
+                        ex ->
+                            Mono.just(
+                                Pair.of(
+                                    Optional.empty(),
+                                    Optional.of(
+                                        Pair.of(
+                                            form, ((ResponseStatusException) ex).getReason()))))))
+        .sequential()
+        .collectList()
+        .map(
+            teams ->
+                ImportResult.<TeamDTO, TeamFormCreate>builder()
+                    .setSuccess(
+                        teams.stream()
+                            .map(Pair::getFirst)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toSet()))
+                    .setFlaws(
+                        teams.stream()
+                            .map(Pair::getSecond)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toSet()))
+                    .build());
   }
 
   @Override
   public Mono<TeamDTO> get(UUID id) {
     return filter(
             TeamFilter.builder().setId(Collections.singleton(id)).build(), PageRequest.of(0, 1))
-        .collectList()
-        .map(
-            teams -> {
-              if (teams.isEmpty()) {
-                throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Team with id '" + id + "' not found");
-              }
-              return teams.get(0);
-            });
+        .next()
+        .switchIfEmpty(
+            Mono.error(
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Team with id '" + id + "' not found")));
   }
 
   @Override

@@ -6,7 +6,7 @@ import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
 import br.com.f5promotora.crm.domain.service.TeamService;
-import br.com.f5promotora.crm.domain.service.v1.TeamServiceImpl;
+import br.com.f5promotora.crm.domain.service.v1.account.TeamServiceImpl;
 import java.util.Set;
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Qualifier;

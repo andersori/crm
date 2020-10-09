@@ -1,4 +1,4 @@
-package br.com.f5promotora.crm.domain.service.v1;
+package br.com.f5promotora.crm.domain.service.v1.account;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Profile;
@@ -9,6 +9,7 @@ import br.com.f5promotora.crm.domain.data.v1.dto.ImportResult;
 import br.com.f5promotora.crm.domain.data.v1.dto.ProfileDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.CompanyFilter;
 import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
+import br.com.f5promotora.crm.domain.data.v1.form.AuthPassword;
 import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
 import br.com.f5promotora.crm.domain.data.v1.form.ProfileFormCreate;
 import br.com.f5promotora.crm.domain.data.v1.mapper.ProfileMapper;
@@ -16,9 +17,15 @@ import br.com.f5promotora.crm.domain.service.CompanyService;
 import br.com.f5promotora.crm.domain.service.ProfileService;
 import br.com.f5promotora.crm.resource.jpa.repository.ProfileRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Date;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -26,12 +33,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.DatabaseClient;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.util.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 import reactor.core.scheduler.Schedulers;
 
 @Getter
@@ -82,40 +91,59 @@ public class ProfileServiceImpl implements ProfileService {
 
   @Override
   public Mono<ImportResult<ProfileDTO, ProfileFormCreate>> save(Set<ProfileFormCreate> forms) {
-    Flux.fromIterable(forms)
+    return Flux.fromIterable(forms)
         .parallel()
-        .runOn(Schedulers.newParallel("save", 10))
+        .runOn(Schedulers.newParallel("save-profile", 3))
         .flatMap(
             form ->
                 filter(
                         ProfileFilter.builder().setUsername(form.getUsername()).build(),
                         PageRequest.of(0, 1))
-                    .collectList()
-                    .flatMap(
-                        profiles -> {
-                          if (profiles.isEmpty()) {
-                            return create(form);
-                          }
-                          return update(profiles.get(0).getId(), form);
-                        }))
-        .sequential();
-
-    return null;
+                    .next()
+                    .flatMap(profile -> update(profile.getId(), form))
+                    .switchIfEmpty(create(form))
+                    .map(
+                        profile ->
+                            Pair.of(
+                                Optional.of(profile),
+                                Optional.<Pair<ProfileFormCreate, String>>empty()))
+                    .onErrorResume(
+                        ex ->
+                            Mono.just(
+                                Pair.of(
+                                    Optional.<ProfileDTO>empty(),
+                                    Optional.of(
+                                        Pair.of(
+                                            form, ((ResponseStatusException) ex).getReason()))))))
+        .sequential()
+        .collectList()
+        .map(
+            profiles ->
+                ImportResult.<ProfileDTO, ProfileFormCreate>builder()
+                    .setSuccess(
+                        profiles.stream()
+                            .map(Pair::getFirst)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toSet()))
+                    .setFlaws(
+                        profiles.stream()
+                            .map(Pair::getSecond)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toSet()))
+                    .build());
   }
 
   @Override
   public Mono<ProfileDTO> get(UUID id) {
     return filter(
             ProfileFilter.builder().setId(Collections.singleton(id)).build(), PageRequest.of(0, 1))
-        .collectList()
-        .map(
-            profiles -> {
-              if (profiles.isEmpty()) {
-                throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Profile with id " + id + " not found");
-              }
-              return profiles.get(0);
-            });
+        .next()
+        .switchIfEmpty(
+            Mono.error(
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Profile with id " + id + " not found")));
   }
 
   @Override
@@ -136,7 +164,7 @@ public class ProfileServiceImpl implements ProfileService {
 
                 if (str.toString().length() != 0) {
                   throw new ResponseStatusException(
-                      HttpStatus.BAD_REQUEST, str.toString() + " in use");
+                      HttpStatus.CONFLICT, str.toString() + " in use");
                 }
               }
             })
@@ -306,5 +334,58 @@ public class ProfileServiceImpl implements ProfileService {
             Mono.error(
                 new ResponseStatusException(
                     HttpStatus.NOT_FOUND, "Profile with id '" + id + "' not found")));
+  }
+
+  @Override
+  public Mono<ProfileDTO> changeStatus(UUID id, ProfileStatus status) {
+    return find(id)
+        .doOnNext(profile -> profile.setStatus(status))
+        .map(repo::save)
+        .map(mapper::toDtoJpa);
+  }
+
+  @Override
+  public Mono<String> authJWT(AuthPassword auth) {
+    return Mono.justOrEmpty(repo.findByUsername(auth.getUsername()))
+        .flatMap(
+            profile -> {
+              if (passwordEncoder.matches(auth.getPassword(), profile.getPassword())) {
+                return Mono.just(
+                        JWT.create()
+                            .withIssuer("f5_crm")
+                            .withExpiresAt(
+                                new Date(System.currentTimeMillis() + 21600000)) /*NOW + 6H*/
+                            .withSubject(auth.getUsername())
+                            .withClaim("name", profile.getFirstName())
+                            .sign(Algorithm.HMAC256("secret")))
+                    .onErrorMap(
+                        ex ->
+                            new ResponseStatusException(
+                                HttpStatus.INTERNAL_SERVER_ERROR, "JWT Creation Exception"))
+                    .doFinally(
+                        onFinally -> {
+                          if (!onFinally.equals(SignalType.ON_ERROR)) {
+                            profile.setLastLogin(LocalDateTime.now());
+                          }
+                        })
+                    .flatMap(
+                        jwt -> {
+                          return Mono.just(repo.save(profile))
+                              .thenReturn(jwt)
+                              .onErrorMap(
+                                  ex ->
+                                      new ResponseStatusException(
+                                          HttpStatus.INTERNAL_SERVER_ERROR,
+                                          "SQL error, it was not possible to update the settings in the profile."));
+                        });
+              }
+              throw new ResponseStatusException(
+                  HttpStatus.BAD_REQUEST, "Invalid username or password");
+            })
+        .switchIfEmpty(
+            Mono.error(
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Profile with username " + auth.getUsername() + " not found")));
   }
 }

@@ -1,4 +1,4 @@
-package br.com.f5promotora.crm.domain.service.v1;
+package br.com.f5promotora.crm.domain.service.v1.account;
 
 import br.com.f5promotora.crm.domain.data.entity.jpa.account.Company;
 import br.com.f5promotora.crm.domain.data.v1.dto.CompanyDTO;
@@ -8,6 +8,7 @@ import br.com.f5promotora.crm.domain.data.v1.filter.ProfileFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.CompanyFormCreate;
 import br.com.f5promotora.crm.domain.data.v1.mapper.CompanyMapper;
 import br.com.f5promotora.crm.domain.service.CompanyService;
+import br.com.f5promotora.crm.domain.service.ProfileService;
 import br.com.f5promotora.crm.resource.jpa.repository.CompanyRepo;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.CompanyCriteria;
 import br.com.f5promotora.crm.resource.r2dbc.criteria.ProfileCriteria;
@@ -16,7 +17,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.DatabaseClient;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
@@ -29,7 +31,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-@RequiredArgsConstructor
 @Service("companyServiceImplV1")
 public class CompanyServiceImpl implements CompanyService {
 
@@ -38,6 +39,21 @@ public class CompanyServiceImpl implements CompanyService {
   private final R2dbcEntityTemplate r2dbcTemplate;
 
   private final CompanyMapper mapper;
+
+  private final ProfileService profileService;
+
+  public CompanyServiceImpl(
+      CompanyRepo repo,
+      DatabaseClient dbClient,
+      R2dbcEntityTemplate r2dbcTemplate,
+      CompanyMapper mapper,
+      @Lazy ProfileService profileService) {
+    this.repo = repo;
+    this.dbClient = dbClient;
+    this.r2dbcTemplate = r2dbcTemplate;
+    this.mapper = mapper;
+    this.profileService = profileService;
+  }
 
   @Override
   public Mono<Long> amount(CompanyFilter filter) {
@@ -62,7 +78,7 @@ public class CompanyServiceImpl implements CompanyService {
   public Mono<ImportResult<CompanyDTO, CompanyFormCreate>> save(Set<CompanyFormCreate> forms) {
     return Flux.fromIterable(forms)
         .parallel()
-        .runOn(Schedulers.newParallel("save", 3))
+        .runOn(Schedulers.newParallel("save-company", 3))
         .flatMap(
             form ->
                 create(form)
@@ -81,30 +97,33 @@ public class CompanyServiceImpl implements CompanyService {
                                             form, ((ResponseStatusException) ex).getReason()))))))
         .sequential()
         .collectList()
-        .flatMap(
+        .map(
             companies ->
-                Mono.just(new ImportResult<CompanyDTO, CompanyFormCreate>())
-                    .doOnNext(
-                        res -> {
-                          res.setSuccess(
-                              companies.stream()
-                                  .map(Pair::getFirst)
-                                  .filter(Optional::isPresent)
-                                  .map(Optional::get)
-                                  .collect(Collectors.toSet()));
-
-                          res.setFlaws(
-                              companies.stream()
-                                  .map(Pair::getSecond)
-                                  .filter(Optional::isPresent)
-                                  .map(Optional::get)
-                                  .collect(Collectors.toSet()));
-                        }));
+                ImportResult.<CompanyDTO, CompanyFormCreate>builder()
+                    .setSuccess(
+                        companies.stream()
+                            .map(Pair::getFirst)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toSet()))
+                    .setFlaws(
+                        companies.stream()
+                            .map(Pair::getSecond)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .collect(Collectors.toSet()))
+                    .build());
   }
 
   @Override
   public Mono<CompanyDTO> get(UUID id) {
-    return find(id).map(mapper::toDtoJpa);
+    return filter(
+            CompanyFilter.builder().setId(Collections.singleton(id)).build(), PageRequest.of(0, 1))
+        .next()
+        .switchIfEmpty(
+            Mono.error(
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Company with id '" + id + "' not found")));
   }
 
   @Override
@@ -148,24 +167,38 @@ public class CompanyServiceImpl implements CompanyService {
   @Override
   public Mono<Void> delete(UUID id) {
     return find(id)
-        .then(
-            dbClient
-                .delete()
-                .from(br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Company.class)
-                .matching(
-                    ProfileCriteria.execute(
-                        ProfileFilter.builder().setId(Collections.singleton(id)).build()))
-                .fetch()
-                .rowsUpdated())
         .flatMap(
-            rowsUpdated -> {
-              if (rowsUpdated != 0) {
-                return Mono.empty();
-              }
-              return Mono.error(
-                  new ResponseStatusException(
-                      HttpStatus.BAD_GATEWAY, "It was not possible to remove the profile."));
-            });
+            company ->
+                profileService
+                    .filter(ProfileFilter.builder().setCompanyId(id).build(), PageRequest.of(0, 1))
+                    .next()
+                    .then(
+                        Mono.error(
+                            new ResponseStatusException(
+                                HttpStatus.BAD_GATEWAY,
+                                "There are profiles linked to this company.")))
+                    .switchIfEmpty(
+                        dbClient
+                            .delete()
+                            .from(
+                                br.com.f5promotora.crm.domain.data.entity.r2dbc.account.Company
+                                    .class)
+                            .matching(
+                                ProfileCriteria.execute(
+                                    ProfileFilter.builder()
+                                        .setId(Collections.singleton(id))
+                                        .build()))
+                            .fetch()
+                            .rowsUpdated()
+                            .doOnNext(
+                                rows -> {
+                                  if (rows != 1) {
+                                    throw new ResponseStatusException(
+                                        HttpStatus.BAD_GATEWAY,
+                                        "It was not possible to remove the company.");
+                                  }
+                                }))
+                    .then());
   }
 
   @Override

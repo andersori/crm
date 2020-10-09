@@ -7,7 +7,7 @@ import br.com.f5promotora.crm.domain.data.v1.dto.TeamDTO;
 import br.com.f5promotora.crm.domain.data.v1.filter.TeamFilter;
 import br.com.f5promotora.crm.domain.data.v1.form.TeamFormCreate;
 import br.com.f5promotora.crm.domain.service.TeamService;
-import br.com.f5promotora.crm.domain.service.v1.TeamServiceImpl;
+import br.com.f5promotora.crm.domain.service.v1.account.TeamServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.Set;
